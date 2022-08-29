@@ -7,7 +7,7 @@ Projects were done in Python and R.
 
 ### Machine Learning / Python
 
-* **CONDITION-BASED PREDICTIVE MAINTENANCE FOR TRUCKS USING MACHINE LEARNING** - The objective of this research was to build a Multi Label Classification model using Python to predict the health status of heavy vehicles based on the performance of its components. 
+* **Condition-Based Predective Maintenance for Trucks Using Machine Learning** - The objective of this research was to build a Multi Label Classification model using Python to predict the health status of heavy vehicles based on the performance of its components. 
 * **Rail Ticket Price Prediction using Machine Learning Algorithms** - Built a machine learning model to predict the demand and prices of train tickets using different Regression models in Python.
 
 ### R
