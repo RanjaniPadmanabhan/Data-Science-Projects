@@ -1,7 +1,8 @@
 ## Data Science Projects
 
-The following projects were done by me as part of my Masters (MSc) in Data Science education.
-Projects were done in Python and R.
+The following projects were done by me for educational purposes.
+Projects were done in Python and R. <br/>
+(Work under progress..)
 
 R Projects can be found here : https://rpubs.com/RanjaniPadmanabhan
 
