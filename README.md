@@ -18,7 +18,5 @@ R Projects can be found here : https://rpubs.com/RanjaniPadmanabhan
 * **HOUSING PREDICTION USING MULTIPLE LINEAR REGRESSION** - Built a model using R to predict the housing prices using Multiple Linear Regression with an accuracy of approx. 65%.
 * **Interactive dashboard to display flight statistics** - Developed a dashboard to visually represent flight statistics using Flexdashboard and Shiny packages in R.
 
-### Big Data Technology / Apache Spark
 
-* **Proof-of-Concept to demonstrate the capabilities of Spark** - Implemented Spark using different file formats of data such as AVRO, PARQUET, CSV, Text file and HIVE to analyse its functionality  and understand its strength and limitations. Used Scala as the programming language. 
 
