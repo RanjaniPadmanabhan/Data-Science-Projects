@@ -1,0 +1,493 @@
+---
+title: "AIRLINE DASHBOARD"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    runtime: shiny
+---
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(rsconnect)
+library(shiny)
+library(dplyr)
+library(ggplot2)
+library(maps)
+library(mapproj)
+library(shinydashboard)
+library(tidyr)
+library(formattable)
+library(plotly)
+```
+
+```{r, include=TRUE}
+flights <- read.csv(file="C:/Users/guest23455/Desktop/Statistics/R/flights1.csv", header = TRUE, stringsAsFactors = FALSE)
+airlines <- read.csv(file="C:/Users/guest23455/Desktop/Statistics/R/airlines.csv", header = TRUE, stringsAsFactors = FALSE)
+airports <- read.csv(file="C:/Users/guest23455/Desktop/Statistics/R/airports.csv", header = TRUE, stringsAsFactors = FALSE)
+loc_state <- read.csv(file="C:/Users/guest23455/Desktop/Statistics/R/states_loc.csv",header = TRUE, stringsAsFactors = FALSE)
+us <- map_data("state")
+
+
+flights_edit <- flights %>% filter(AIRLINE %in% c("AS","WN","DL","UA","HA","US","B6","F9","AA","NK","OO","MQ","EV"))
+write.csv(flights_edit, file = "flight_airline")
+
+flights_edit$delay <- ifelse(flights_edit$ARRIVAL_DELAY > 0,1,0)
+all_flights <- merge(flights_edit, airports, by.x = "ORIGIN_AIRPORT", by.y = "IATA_CODE", all.x = TRUE)
+
+#Renaming delay reasons
+colnames(all_flights)[colnames(all_flights)=="AIR_SYSTEM_DELAY"] <- "CAUSED_BY_AIR_SYSTEM"
+colnames(all_flights)[colnames(all_flights)=="AIRLINE_DELAY"] <- "CAUSED_BY_AIRLINE/CARRIER"
+colnames(all_flights)[colnames(all_flights)=="WEATHER_DELAY"] <- "CAUSED_BY_WEATHER"
+#all_flights
+```
+
+
+
+CONSOLIDATED VIEW
+==========================
+Column 
+----------------------------------------
+### NUMBER OF FLIGHTS BY EACH AIRLINE
+```{r}
+total <- as.data.frame(table(flights$AIRLINE))
+total_flights <-  ggplot(data = total ,aes(x = Freq , y = reorder(Var1,-Freq), fill = Var1  )) +
+                geom_bar(stat = "identity") +  xlab("Number of Flights") + ylab("Airlines")  + 
+  ggtitle("Number of Flights by each Airline ") + scale_fill_discrete(name="Airline")
+ggplotly(total_flights ,tooltip =  c("x","label"))
+
+ ```
+
+
+### DEPARTURE DELAY IN AIRPORTS  
+  
+```{r, warning=FALSE}  
+top_origins <- flights %>%
+               filter(flights$ORIGIN_AIRPORT %in% c("DFW","DEN","BOS","LAX","MAF","ORD","PHX","SEA","IAH"))
+
+to <- top_origins %>% 
+  select(ORIGIN_AIRPORT, DEPARTURE_DELAY) %>% 
+  group_by(ORIGIN_AIRPORT) %>%
+  summarise(org_dep_delay = mean(DEPARTURE_DELAY, na.rm = T)) %>%
+  arrange(org_dep_delay) %>%
+  ggplot(aes(x = org_dep_delay, y = ORIGIN_AIRPORT, fill = ORIGIN_AIRPORT,size = org_dep_delay,  label = ORIGIN_AIRPORT)) + geom_point(stat = "identity") +  xlab("Avg Departure Delay (in minutes)") + ylab("Airports")  +  ggtitle("Average Departure Delay in Airports ")  + scale_fill_discrete(name="Airports")
+ggplotly(to, tooltip = c("x","label"))
+ ```
+
+ column
+---------------------------------------------- 
+
+### REASONS FOR CANCELLATIONS
+
+```{r}
+slices <- c(500,347,94,59)
+lbls <- c("NOT CANCELLED","WEATHER DELAY","CARRIER DELAY","AIR SYSTEM DELAY")
+pct <- round(slices/sum(slices)*100)
+lbls <- paste(lbls,pct)
+lbls<- paste(lbls, "%", sep="")
+cr <- pie(slices, labels = lbls, col=rainbow(length(lbls)), main = "Cancellation Reasons")
+ggplotly(cr)         
+ ```
+
+
+### AVEARGE DEPARTURE DELAY
+
+```{r}
+
+
+avg_dep_delay <- aggregate(flights$DEPARTURE_DELAY, by=list(flights$AIRLINE), mean, na.rm=T)
+
+names(avg_dep_delay) <- c("AirlineCode", "Avg_DEPARTURE_Delay")
+avg_dep_delay <- merge(avg_dep_delay, airlines, by.x="AirlineCode", by.y="IATA_CODE", all.x=TRUE)
+#avg_dep_delay
+avg_dep_delay <- avg_dep_delay[order(avg_dep_delay$Avg_DEPARTURE_Delay), ]
+avg_dep_delay <- avg_dep_delay[ ,c(3,1,2)]
+
+dep_delay <- ggplot(data = avg_dep_delay, aes(x = Avg_DEPARTURE_Delay , y = reorder(AIRLINE,-Avg_DEPARTURE_Delay) ,fill = AIRLINE, label = AIRLINE  )) +
+                geom_bar(stat = "identity") +  xlab("Avg Departure Delay (in minutes)") + ylab("Airlines")  +  ggtitle("Average Departure Delay of Airlines ")
+
+ggplotly(dep_delay,tooltip =  c("x","label"))
+```
+
+OUTLINE 
+=============
+
+Column {data-orientation = columns}
+--------------------------------------------------------
+```{r}
+str(flights)
+str(airlines)
+str(airports)
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### No of observations in FLIGHTS 
+```{r}
+renderValueBox({
+    len <- length(flights$AIRLINE)
+    valueBox(
+      formatC(len, format = "d", big.mark = ',')
+      ,subtitle = "Number of flights"
+      ,color = 'olive'
+      ,icon = icon("plane-departure", lib='font-awesome')
+    )
+  })
+```
+
+### No of observations in AIRLINES
+```{r}
+renderValueBox({
+    len1 <- length(airlines$AIRLINE)
+    valueBox(
+      formatC(len1, format = "d", big.mark = ',')
+      ,subtitle = "Number of airlines"
+      ,color = 'olive'
+      ,icon = icon("plane-arrival", lib='font-awesome')
+    )
+  })
+
+```
+
+### No of observations in AIRPORTS
+```{r}
+renderValueBox({
+    len2 <- length(airports$AIRPORT)
+    valueBox(
+      formatC(len2, format = "d", big.mark = ',')
+      ,subtitle = "Number of airports"
+      ,color = 'olive'
+      ,icon = icon("plane", lib='font-awesome')
+    )
+  })
+```
+
+DATASETS
+==========================
+Column {.tabset}
+--------------------------------
+### FLIGHTS DATASET
+```{r}
+DT::datatable(flights,
+              options = list(
+                  pageLength = 30
+              ))
+ ```
+
+
+### AIRLINES DATASET
+```{r}
+DT::datatable(airlines,
+              options = list(
+                  pageLength = 14
+              ))
+ ```
+
+ 
+### AIPORTS DATASET
+```{r}
+DT::datatable(airports,
+              options = list(
+                  pageLength = 30
+              ))
+```
+
+
+
+
+AIRLINE FLIGHTS
+===========================
+### NUMBER OF FLIGHTS BY EACH AIRLINE
+```{r}
+total <- as.data.frame(table(flights$AIRLINE))
+total_flights <-  ggplot(data = total ,aes(x = Freq , y = reorder(Var1,-Freq), fill = Var1  )) +
+                geom_bar(stat = "identity") +  xlab("Number of Flights") + ylab("Airlines")  + 
+  ggtitle("Number of Flights by each Airline ") + scale_fill_discrete(name="Airline")
+ggplotly(total_flights ,tooltip =  c("x","label"))
+
+```
+
+DELAYS
+=================================
+Column {.tabset}
+------------------------------------------
+
+### ARRIVAL DELAY
+```{r}
+airline.avg.delay <- aggregate(flights$ARRIVAL_DELAY, by=list(flights$AIRLINE), mean, na.rm=T)
+#airline.avg.delay
+names(airline.avg.delay) <- c("AirlineCode", "Avg_Arrival_Delay")
+airline.avg.delay <- merge(airline.avg.delay, airlines, by.x="AirlineCode", by.y="IATA_CODE", all.x=TRUE)
+#airline.avg.delay
+#airline.avg.delay
+airline.avg.delay <- airline.avg.delay[order(airline.avg.delay$Avg_Arrival_Delay), ]
+airline.avg.delay <- airline.avg.delay[ ,c(3,1,2)]
+#airline.avg.delay
+
+
+avg_delay <- ggplot(data = airline.avg.delay, aes(x = Avg_Arrival_Delay , y = reorder(AIRLINE,-Avg_Arrival_Delay) ,fill = AIRLINE, label = AIRLINE  )) +
+                geom_bar(stat = "identity") +  xlab("Avg Arrival Delay (in minutes)") + ylab("Airlines")  +  ggtitle("Average Arrival Delay of Airlines ")
+
+ggplotly(avg_delay,tooltip =  c("x","label")) 
+
+  ```
+
+### DEPARTURE DELAY
+```{r}
+avg_dep_delay <- aggregate(flights$DEPARTURE_DELAY, by=list(flights$AIRLINE), mean, na.rm=T)
+names(avg_dep_delay) <- c("AirlineCode", "Avg_DEPARTURE_Delay")
+avg_dep_delay <- merge(avg_dep_delay, airlines, by.x="AirlineCode", by.y="IATA_CODE", all.x=TRUE)
+#avg_dep_delay
+avg_dep_delay <- avg_dep_delay[order(avg_dep_delay$Avg_DEPARTURE_Delay), ]
+avg_dep_delay <- avg_dep_delay[ ,c(3,1,2)]
+
+dep_delay <- ggplot(data = avg_dep_delay, aes(x = Avg_DEPARTURE_Delay , y = reorder(AIRLINE,-Avg_DEPARTURE_Delay) ,fill = AIRLINE, label = AIRLINE  )) +
+                geom_bar(stat = "identity") +  xlab("Avg Departure Delay (in minutes)") + ylab("Airlines")  +  ggtitle("Average Departure Delay of Airlines ")
+
+ggplotly(dep_delay,tooltip =  c("x","label"))  
+
+
+
+
+
+```
+
+
+CANCELLATIONS
+==============================
+Column {.tabset}
+----------------------------
+### CANCELLATION OF FLIGHTS IN %
+```{r}
+cancel <- aggregate(flights$CANCELLED, by=list(flights$AIRLINE), mean, na.rm=T)
+names(cancel) <- c("AirlineCode", "Cancelled_flights")
+cancel <- merge(cancel, airlines, by.x="AirlineCode", by.y="IATA_CODE", all.x=TRUE)
+cancel <- cancel[order(cancel$Cancelled_flights), ]
+cancel <- cancel[ ,c(3,1,2)]
+
+cancelled <- ggplot(data = cancel, aes(x = Cancelled_flights , y = reorder(AIRLINE,-Cancelled_flights) ,fill = AIRLINE, label = AIRLINE  )) +
+                geom_bar(stat = "identity") +  xlab("Cancel Percentage (in %)") + ylab("Airlines")  +  ggtitle("Cancellation of Flights (in %) ")
+
+ggplotly(cancelled,tooltip =  c("x","label"))
+ ```
+ 
+### REASONS FOR CANCELLATION
+```{r}
+slices <- c(500,347,94,59)
+lbls <- c("NOT CANCELLED","WEATHER DELAY","CARRIER DELAY","AIR SYSTEM DELAY")
+pct <- round(slices/sum(slices)*100)
+lbls <- paste(lbls,pct)
+lbls<- paste(lbls, "%", sep="")
+cr <- pie(slices, labels = lbls, col=rainbow(length(lbls)), main = "Cancellation Reasons")
+ggplotly(cr)         
+```
+
+```
+
+AIRPORTS
+=======================
+Column {.tabset}
+------------------------------
+### TOP 10 AIRPORTS
+```{r}
+origin = as.data.frame(table(flights$ORIGIN_AIRPORT))
+origin1 = origin[order(origin$Freq, decreasing = TRUE),]
+origin1 = origin1[1:10,]
+
+origin_top <- ggplot(data = origin1, aes(x= reorder(Var1,-Freq), y = Freq, fill = Var1,)) + geom_bar(stat = "identity") + geom_text(aes(label = Freq), vjust = -0.3, size = 3) + xlab("Airpots") + ylab("Number of Flights")  + 
+  ggtitle("Number of Flights flying out of each Origin ") + scale_fill_discrete(name="Airports")
+ggplotly(origin_top ,tooltip =  c("y"))
+  ```
+
+### DEPARTURE DELAY IN AIRPORTS  
+  
+```{r, warning=FALSE}  
+top_origins <- flights %>%
+               filter(flights$ORIGIN_AIRPORT %in% c("DFW","DEN","BOS","LAX","MAF","ORD","PHX","SEA","IAH"))
+
+to <- top_origins %>% 
+  select(ORIGIN_AIRPORT, DEPARTURE_DELAY) %>% 
+  group_by(ORIGIN_AIRPORT) %>%
+  summarise(org_dep_delay = mean(DEPARTURE_DELAY, na.rm = T)) %>%
+  arrange(org_dep_delay) %>%
+  ggplot(aes(x = org_dep_delay, y = ORIGIN_AIRPORT, fill = ORIGIN_AIRPORT,size = org_dep_delay,  label = ORIGIN_AIRPORT)) + geom_point(stat = "identity") +  xlab("Avg Departure Delay (in minutes)") + ylab("Airports")  +  ggtitle("Average Departure Delay in Airports ")  + scale_fill_discrete(name="Airports")
+ggplotly(to, tooltip = c("x","label"))
+ ```
+
+### CANCELLATIONS PERCENTAGE IN AIRPORTS
+```{r}
+po <- top_origins %>% 
+  select(ORIGIN_AIRPORT, CANCELLED) %>% 
+  group_by(ORIGIN_AIRPORT) %>%
+  summarise(per_cancel = mean(CANCELLED == 1), na.rm = T) %>%
+  arrange(per_cancel) %>%
+  ggplot(aes(x = per_cancel, y = reorder(ORIGIN_AIRPORT, -per_cancel), fill = ORIGIN_AIRPORT, label = ORIGIN_AIRPORT)) + geom_bar(stat = "identity") +  xlab("Cancellation (in %)") + ylab("Airports")  +  ggtitle("Cancellations of flights in Airports (in %) ")  + scale_fill_discrete(name="Airports")
+ggplotly(po, tooltip = c("x","label"))  
+
+```
+
+
+
+
+
+FLIGHTS
+=================================================
+Column {.sidebar}
+-----------------------------------------------------------------------
+
+```{r}
+                              selectInput("month","Month:",
+                              choices = list("All Year" = 99,
+                                              "Jan" = 1
+                                              ))
+
+                    selectInput("airline", "AIRLINE:",
+                        choices = c("Alaska Airlines Inc." =	"AS",
+                                    "Southwest Airlines Co." = "WN",
+                                    "Delta Air Lines Inc." = "DL",
+                                    "United Air Lines Inc." = "UA",
+                                    "Hawaiian Airlines Inc." = "HA",
+                                    "US Airways Inc." = "US",
+                                    "JetBlue Airways" = "B6",
+                                    "Frontier Airlines Inc." = "F9",
+                                    "American Airlines Inc." = "AA",
+                                    "Spirit Air Lines" = "NK",
+                                    "Skywest Airlines Inc." = "OO",
+                                    "American Eagle Airlines Inc." = "MQ",
+                                    "Atlantic Southeast Airlines" = "EV"))
+       
+  ```
+
+Column {data-width=20}
+-----------------------------------------------------------------------
+NOTE: If shiny packages are not visible, please save the file again and re-run it.
+```{r}
+
+data<- reactive({
+       if(input$month == 99){
+         sub <- all_flights %>% filter( AIRLINE == input$airline)
+       }
+  else {
+    sub <- all_flights %>% filter((AIRLINE == input$airline) & (MONTH == input$month))
+  }
+  return(sub)
+})
+
+renderValueBox({
+    total_number_value <- data() %>% nrow()
+    valueBox(
+      formatC(total_number_value, format = "d", big.mark = ',')
+      ,subtitle = "Number of flights"
+      ,color = 'olive'
+      ,icon = icon("plane", lib='font-awesome'))
+})
+
+  ```
+
+  
+Column {data-width=20}
+-----------------------------------------------------------------------
+
+```{r}
+renderValueBox({
+    delay_rate_value <- as.numeric(data() %>% summarise(mean(delay, na.rm=TRUE)))
+    valueBox(
+      percent(delay_rate_value)
+      ,subtitle = "Delay Rate"
+      ,color = 'yellow'
+      ,icon = icon("bell", lib= 'font-awesome')
+    )
+}) 
+
+
+  ```
+  
+Column {data-width=20}
+--------------------------------------------------------------------
+```{r}
+  
+
+renderValueBox({
+    cancel_rate_value <- as.numeric(data() %>% summarise(mean(CANCELLED, na.rm=TRUE)))
+    valueBox(
+      percent(cancel_rate_value)
+      ,subtitle = "Cancel Rate"
+      ,color = 'red'
+      ,icon = icon("bell-slash", lib= 'font-awesome')
+    )
+  })  
+```
+
+
+MAP
+===========================================
+```{r}
+radioButtons("n","Figures need to be shown",
+  choices=list("Number of Flight" = 2,
+               "Cancel Rate" = 3,
+               "Delay Rate" = 4))
+  ```
+
+
+Column
+---------------------------------
+NOTE: If shiny packages are not visible, please save the file again and re-run it.
+```{r}
+
+data_map <- reactive({
+    column_select = as.numeric(input$n)
+    map_flights <- all_flights %>% 
+      group_by(STATE) %>% 
+      summarise(n_flight = n(), p_cancel = mean(CANCELLED), p_delay = mean(delay,  na.rm=TRUE)) %>%
+      select(1, column_select)
+    
+    names(map_flights) <- c("STATE","Flights")
+    
+    map_flights$region <- tolower(state.name[match(map_flights$STATE,state.abb)])
+    
+    return(map_flights)
+  })
+  
+renderPlot({
+    ggplot() + 
+      geom_map(data=us, map=us,
+               aes(x=long, y=lat, map_id=region),
+               fill="#ffffff", color="#ffffff", size=0.3) +
+      geom_map(data=data_map(), map=us,
+               aes(fill=Flights, map_id=region),
+               color="#ffffff", size=0.3) +
+      scale_fill_continuous(low='thistle2', high='darkred', guide='colorbar', na.value = 'grey') +
+      labs(x= NULL, y=NULL) +
+      coord_map("mercator") +
+      theme(panel.border = element_blank()) +
+      theme(panel.background = element_blank()) +
+      theme(axis.ticks = element_blank()) +
+      theme(axis.text = element_blank()) +
+      geom_text(data=loc_state, aes(Longitude, Latitude, label = state_names), size=3)
+
+  })
+```
+
+
+
+
+
+ABOUT
+===========================================
+About the Dataset:
+
+The dataset contains the data regarding flight delays and cancellation in the United States for a brief period in 2015. It has information relating to the flights that were delayed or cancelled such as number of flights, airline detail, scheduled time of departure & arrival and actual departure & arrival time, etc. It also has the airport related data such as origin airport, destination airport, city, latitude and longitude of the location.
+
+Introduction to Dashboard:
+
+Raw datasets as such cannot be used to infer any sensible information unless processed. A dashboard simplifies the complex data and gives the user a representation of the processed data and also summarizes the data into a readable format. The processed information can consist of graphs, pictures, charts or other visualizations which are a result of analysis and processing of raw data using Key performances indices and metrics. This eventually can help the reader understand the data and make better decisions based on the information in the dashboard.
+
+Purpose of the airline visualization:
+
+This airline dashboard shows important information relating to flight data in the United States. Information regarding delays and cancellation of airlines shows the performance of not only the airlines but also airports. This can help travelers choose better airlines (and even airports) and avoid delays or cancellations in their travel. This also helps to forecast the delay and estimate the ETA for the current flights. The information showing the reason for cancellation is also interesting for airline companies and other authorities such as Department of transportation which can help them understand the status quo. 
+
+In summary, the airline dashboard gives the user an overview of the airline performance which is beneficial both for the travelers to plan accordingly and the airline companies to improve their performance and services. 
+
+
+NOTE: If shiny packages are not visible, please save the file again and re-run it. 
+
