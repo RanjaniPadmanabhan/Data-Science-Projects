@@ -3,6 +3,8 @@
 The following projects were done by me as part of my Masters (MSc) in Data Science education.
 Projects were done in Python and R.
 
+R Projects can be founf here : https://rpubs.com/RanjaniPadmanabhan
+
 # Contents
 
 ### Machine Learning / Python
